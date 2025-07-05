@@ -1,0 +1,11 @@
+# Claude settings
+.claude/
+
+# Xcode
+.build/
+.swiftpm/
+*.xcodeproj
+*.xcworkspace
+
+# macOS
+.DS_Store
