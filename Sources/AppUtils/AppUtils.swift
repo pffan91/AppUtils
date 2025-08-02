@@ -147,7 +147,7 @@ public enum AppUtils {
 
     public static func convertVersionToServerString(version: String, build: String) -> String {
         let versionCleaned = version.replacingOccurrences(of: ".", with: "")
-        let versionPadded = (versionCleaned + String(repeating: "0", count: max(0, 4 - versionCleaned.count))).prefix(4)
+        let versionPadded = (String(repeating: "0", count: max(0, 4 - versionCleaned.count)) + versionCleaned).prefix(4)
         let buildPadded = (String(repeating: "0", count: max(0, 4 - build.count)) + build).prefix(4)
         return "\(versionPadded)\(buildPadded)"
     }
