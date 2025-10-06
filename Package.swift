@@ -14,11 +14,12 @@ let package = Package(
             targets: ["AppUtils"]),
     ],
     dependencies: [
+        .package(url: "https://github.com/pffan91/AppExtensions.git", branch: "main")
     ],
     targets: [
         .target(
             name: "AppUtils",
-            dependencies: [],
+            dependencies: ["AppExtensions"],
             path: "Sources/AppUtils"),
         .testTarget(
             name: "AppUtilsTests",

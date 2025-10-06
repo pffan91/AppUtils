@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "appextensions",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pffan91/AppExtensions.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "0fe91abb4abf6652de229caf6acf76ee092e5ce6"
+      }
+    }
+  ],
+  "version" : 2
+}
