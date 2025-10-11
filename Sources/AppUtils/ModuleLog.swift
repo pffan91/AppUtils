@@ -22,6 +22,61 @@ public struct ModuleLog {
         self.logLevel = level
     }
 
+    // MARK: - File Logging
+
+    private static var filePath: String?
+    private static var isFileLoggingEnabled = false
+
+    private static let fileDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd.MM.yyyy HH:mm:ss"
+        return formatter
+    }()
+
+    public static func enableFileLogging(appLaunchCount: Int = 0) {
+        let path = logFileUrl(appLaunchCount: appLaunchCount)
+
+        // Only initialize file if it doesn't exist
+        if !FileManager.default.fileExists(atPath: path) {
+            try? "".write(toFile: path, atomically: true, encoding: .utf8)
+        }
+
+        filePath = path
+        isFileLoggingEnabled = true
+    }
+
+    public static func disableFileLogging() {
+        isFileLoggingEnabled = false
+        filePath = nil
+    }
+
+    public static func logFileUrl(appLaunchCount: Int = 0) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd.MM.yyyy"
+        let dateString = dateFormatter.string(from: Date())
+        let suffix = appLaunchCount % 3
+        return NSTemporaryDirectory() + "\(dateString)_\(suffix)_log.txt"
+    }
+
+    public static func allLogFilePaths() -> [String] {
+        let fileManager = FileManager.default
+        let enumerator = fileManager.enumerator(atPath: NSTemporaryDirectory())
+        var paths = [String]()
+        while let element = enumerator?.nextObject() as? String {
+            if element.contains("_log.txt") {
+                paths.append(NSTemporaryDirectory() + element)
+            }
+        }
+        return paths
+    }
+
+    private static func writeToFile(_ message: String) {
+        guard isFileLoggingEnabled, let path = filePath else { return }
+        let text = try? String(contentsOf: URL(fileURLWithPath: path))
+        let dateString = fileDateFormatter.string(from: Date())
+        try? ((text ?? "") + "\n" + "\(dateString) " + message).write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
     // MARK: - Static
 
     private static let printDateFormatter: DateFormatter = {
@@ -44,18 +99,21 @@ public struct ModuleLog {
             NSLog("|◽️ \(msg)")
         }
 #endif
+        writeToFile("|◽️ \(msg)")
     }
 
     public static func star(_ msg: String) {
 #if DEBUG
         NSLog("|⭐️ \(msg)")
 #endif
+        writeToFile("|⭐️ \(msg)")
     }
 
     public static func state(_ msg: String) {
 #if DEBUG
         NSLog("|🎲 \(msg)")
 #endif
+        writeToFile("|🎲 \(msg)")
     }
 
     public static func user(_ msg: String) {
@@ -63,18 +121,21 @@ public struct ModuleLog {
 #if DEBUG
         NSLog("|😀 \(msg)")
 #endif
+        writeToFile("|😀 \(msg)")
     }
 
     public static func url(_ msg: String) {
 #if DEBUG
         NSLog("|🌎 \(msg)")
 #endif
+        writeToFile("|🌎 \(msg)")
     }
 
     public static func time(_ msg: String) {
 #if DEBUG
         NSLog("|🕑 \(msg)")
 #endif
+        writeToFile("|🕑 \(msg)")
     }
 
     public static func request(_ msg: String, usePrint: Bool = false) {
@@ -86,6 +147,7 @@ public struct ModuleLog {
             NSLog("|📡 \(msg)")
         }
 #endif
+        writeToFile("|📡 \(msg)")
     }
 
     public static func response(_ msg: String, usePrint: Bool = false) {
@@ -97,6 +159,7 @@ public struct ModuleLog {
             NSLog("|📦 \(msg)")
         }
 #endif
+        writeToFile("|📦 \(msg)")
     }
 
     public static func debug(_ msg: String, usePrint: Bool = false) {
@@ -107,6 +170,7 @@ public struct ModuleLog {
             NSLog("|◾️ \(msg)")
         }
 #endif
+        writeToFile("|◾️ \(msg)")
     }
 
     public static func info(_ msg: String, usePrint: Bool = false) {
@@ -117,6 +181,7 @@ public struct ModuleLog {
         } else {
             NSLog("|🔷 \(msg)")
         }
+        writeToFile("|🔷 \(msg)")
     }
 
     public static func warn(_ msg: String, usePrint: Bool = false) {
@@ -128,6 +193,7 @@ public struct ModuleLog {
         } else {
             NSLog("|🔶 \(msg)")
         }
+        writeToFile("|🔶 \(msg)")
     }
 
     public static func error(_ msg: String, usePrint: Bool = false) {
@@ -139,6 +205,7 @@ public struct ModuleLog {
         } else {
             NSLog("|❌ \(msg)")
         }
+        writeToFile("|❌ \(msg)")
     }
 
     // MARK: - Instance
