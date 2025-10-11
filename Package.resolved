@@ -6,7 +6,25 @@
       "location" : "https://github.com/pffan91/AppExtensions.git",
       "state" : {
         "branch" : "main",
-        "revision" : "0fe91abb4abf6652de229caf6acf76ee092e5ce6"
+        "revision" : "52f7313030dcc86d651d2075c23c3359a9a2f5d8"
+      }
+    },
+    {
+      "identity" : "realm-core",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/realm/realm-core.git",
+      "state" : {
+        "revision" : "f98720a07e6150c41c953e1937108225550ba155",
+        "version" : "20.0.0"
+      }
+    },
+    {
+      "identity" : "realm-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/realm/realm-swift.git",
+      "state" : {
+        "revision" : "7ea8be1f74034bae860120d58d3491c4fcedff5b",
+        "version" : "20.0.0"
       }
     }
   ],

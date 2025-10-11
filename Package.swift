@@ -14,12 +14,13 @@ let package = Package(
             targets: ["AppUtils"]),
     ],
     dependencies: [
+        .package(url: "https://github.com/realm/realm-swift.git", from: "20.0.0"),
         .package(url: "https://github.com/pffan91/AppExtensions.git", branch: "main")
     ],
     targets: [
         .target(
             name: "AppUtils",
-            dependencies: ["AppExtensions"],
+            dependencies: ["AppExtensions", .product(name: "RealmSwift", package: "realm-swift")],
             path: "Sources/AppUtils"),
         .testTarget(
             name: "AppUtilsTests",
