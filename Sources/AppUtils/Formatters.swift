@@ -1,5 +1,5 @@
 //
-//  AppUtils.swift
+//  Formatters.swift
 //  AppUtils
 //
 //  Created by Vladyslav Semenchenko on 26/10/2024.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum AppUtils {
+public enum Formatters {
 
     /// Create new JSON decoder with .millisecondsSince1970 date decoding strategy
     public static func newJSONDecoder(dateDecodingStrategy: JSONDecoder.DateDecodingStrategy = .millisecondsSince1970) -> JSONDecoder {
