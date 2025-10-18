@@ -81,6 +81,13 @@ public struct ModuleLog {
             return paths
         }
 
+        public static func currentLogContent() -> String? {
+            guard let path = filePath, FileManager.default.fileExists(atPath: path) else {
+                return nil
+            }
+            return try? String(contentsOfFile: path, encoding: .utf8)
+        }
+
         private static func writeToFile(_ message: String) {
             guard isFileLoggingEnabled, let path = filePath else { return }
             let text = try? String(contentsOf: URL(fileURLWithPath: path))
