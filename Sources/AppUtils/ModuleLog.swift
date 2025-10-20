@@ -96,7 +96,7 @@ public struct ModuleLog {
 
         // MARK: - Static
 
-        public static func verbose(_ msg: String, usePrint: Bool = false) {
+        public static func verbose(_ msg: String, usePrint: Bool = true) {
 #if DEBUG
             if usePrint {
                 print("\(printPrefix) |◽️ \(msg)")
@@ -107,43 +107,63 @@ public struct ModuleLog {
             writeToFile("|◽️ \(msg)")
         }
 
-        public static func star(_ msg: String) {
+        public static func star(_ msg: String, usePrint: Bool = true) {
 #if DEBUG
-            NSLog("|⭐️ \(msg)")
+            if usePrint {
+                print("\(printPrefix) |⭐️ \(msg)")
+            } else {
+                NSLog("|⭐️ \(msg)")
+            }
 #endif
             writeToFile("|⭐️ \(msg)")
         }
 
-        public static func state(_ msg: String) {
+        public static func state(_ msg: String, usePrint: Bool = true) {
 #if DEBUG
-            NSLog("|🎲 \(msg)")
+            if usePrint {
+                print("\(printPrefix) |🎲 \(msg)")
+            } else {
+                NSLog("|🎲 \(msg)")
+            }
 #endif
             writeToFile("|🎲 \(msg)")
         }
 
-        public static func user(_ msg: String) {
+        public static func user(_ msg: String, usePrint: Bool = true) {
             // 👤👨‍💻
 #if DEBUG
-            NSLog("|😀 \(msg)")
+            if usePrint {
+                print("\(printPrefix) |😀 \(msg)")
+            } else {
+                NSLog("|😀 \(msg)")
+            }
 #endif
             writeToFile("|😀 \(msg)")
         }
 
-        public static func url(_ msg: String) {
+        public static func url(_ msg: String, usePrint: Bool = true) {
 #if DEBUG
-            NSLog("|🌎 \(msg)")
+            if usePrint {
+                print("\(printPrefix) |🌎 \(msg)")
+            } else {
+                NSLog("|🌎 \(msg)")
+            }
 #endif
             writeToFile("|🌎 \(msg)")
         }
 
-        public static func time(_ msg: String) {
+        public static func time(_ msg: String, usePrint: Bool = true) {
 #if DEBUG
-            NSLog("|🕑 \(msg)")
+            if usePrint {
+                print("\(printPrefix) |🕑 \(msg)")
+            } else {
+                NSLog("|🕑 \(msg)")
+            }
 #endif
             writeToFile("|🕑 \(msg)")
         }
 
-        public static func request(_ msg: String, usePrint: Bool = false) {
+        public static func request(_ msg: String, usePrint: Bool = true) {
             // 🔼📡
 #if DEBUG
             if usePrint {
@@ -155,7 +175,7 @@ public struct ModuleLog {
             writeToFile("|📡 \(msg)")
         }
 
-        public static func response(_ msg: String, usePrint: Bool = false) {
+        public static func response(_ msg: String, usePrint: Bool = true) {
             // 🔽🔻📦
 #if DEBUG
             if usePrint {
@@ -167,7 +187,7 @@ public struct ModuleLog {
             writeToFile("|📦 \(msg)")
         }
 
-        public static func debug(_ msg: String, usePrint: Bool = false) {
+        public static func debug(_ msg: String, usePrint: Bool = true) {
 #if DEBUG
             if usePrint {
                 print("\(printPrefix) |◾️ \(msg)")
@@ -178,7 +198,7 @@ public struct ModuleLog {
             writeToFile("|◾️ \(msg)")
         }
 
-        public static func info(_ msg: String, usePrint: Bool = false) {
+        public static func info(_ msg: String, usePrint: Bool = true) {
             if usePrint {
 #if DEBUG
                 print("\(printPrefix) |🔷 \(msg)")
@@ -189,7 +209,7 @@ public struct ModuleLog {
             writeToFile("|🔷 \(msg)")
         }
 
-        public static func warn(_ msg: String, usePrint: Bool = false) {
+        public static func warn(_ msg: String, usePrint: Bool = true) {
             // ⚠️
             if usePrint {
 #if DEBUG
@@ -201,7 +221,7 @@ public struct ModuleLog {
             writeToFile("|🔶 \(msg)")
         }
 
-        public static func error(_ msg: String, usePrint: Bool = false) {
+        public static func error(_ msg: String, usePrint: Bool = true) {
             // ❗️
             if usePrint {
 #if DEBUG
@@ -215,7 +235,7 @@ public struct ModuleLog {
 
         // MARK: - Instance
 
-        public func verbose(_ msg: String, usePrint: Bool = false) {
+        public func verbose(_ msg: String, usePrint: Bool = true) {
             guard logLevel.rawValue <= LogLevel.verbose.rawValue else { return }
             ModuleLog.verbose("[\(moduleName)] \(msg)", usePrint: usePrint)
         }
@@ -245,37 +265,37 @@ public struct ModuleLog {
             ModuleLog.time("[\(moduleName)] \(msg)")
         }
 
-        public func request(_ msg: String, usePrint: Bool = false) {
+        public func request(_ msg: String, usePrint: Bool = true) {
             guard logLevel.rawValue <= LogLevel.verbose.rawValue else { return }
             ModuleLog.request("[\(moduleName)] \(msg)", usePrint: usePrint)
         }
 
-        public func response(_ msg: String, usePrint: Bool = false) {
+        public func response(_ msg: String, usePrint: Bool = true) {
             guard logLevel.rawValue <= LogLevel.verbose.rawValue else { return }
             ModuleLog.response("[\(moduleName)] \(msg)", usePrint: usePrint)
         }
 
-        public func debug(_ msg: String, usePrint: Bool = false) {
+        public func debug(_ msg: String, usePrint: Bool = true) {
             guard logLevel.rawValue <= LogLevel.debug.rawValue else { return }
             ModuleLog.debug("[\(moduleName)] \(msg)", usePrint: usePrint)
         }
 
-        public func info(_ msg: String, usePrint: Bool = false) {
+        public func info(_ msg: String, usePrint: Bool = true) {
             guard logLevel.rawValue <= LogLevel.info.rawValue else { return }
             ModuleLog.info("[\(moduleName)] \(msg)", usePrint: usePrint)
         }
 
-        public func warn(_ msg: String, usePrint: Bool = false) {
+        public func warn(_ msg: String, usePrint: Bool = true) {
             guard logLevel.rawValue <= LogLevel.warn.rawValue else { return }
             ModuleLog.warn("[\(moduleName)] \(msg)", usePrint: usePrint)
         }
 
-        public func error(_ msg: String, usePrint: Bool = false) {
+        public func error(_ msg: String, usePrint: Bool = true) {
             guard logLevel.rawValue <= LogLevel.error.rawValue else { return }
             ModuleLog.error("[\(moduleName)] \(msg)", usePrint: usePrint)
         }
 
-        public func error(_ error: Error, usePrint: Bool = false) {
+        public func error(_ error: Error, usePrint: Bool = true) {
             guard logLevel.rawValue <= LogLevel.error.rawValue else { return }
             ModuleLog.error("[\(moduleName)] \(String(describing: error))", usePrint: usePrint)
         }
