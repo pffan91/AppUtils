@@ -53,18 +53,10 @@ public class DataCache: Object, Codable {
         do {
             let realm = try Realm()
             let interval = expirationInterval ?? .oneDay
-
-            if let oldCache = realm.object(ofType: DataCache.self, forPrimaryKey: searchKey) {
-                try realm.write {
-                    oldCache.date = Date()
-                    oldCache.content = json
-                    oldCache.expirationInterval = interval
-                }
-            } else {
-                let cache = DataCache(content: json, searchKey: searchKey, expirationInterval: interval)
-                try realm.write {
-                    realm.add(cache)
-                }
+            let cache = DataCache(content: json, searchKey: searchKey, expirationInterval: interval)
+            cache.date = Date()
+            try realm.write {
+                realm.add(cache, update: .modified)
             }
         } catch {
             print("DataCache Error: Failed to save cache for key '\(searchKey)': \(error)")
