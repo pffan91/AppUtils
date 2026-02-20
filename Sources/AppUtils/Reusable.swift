@@ -16,8 +16,16 @@ public extension Reusable {
 
 public extension Reusable where Self: UITableViewCell {
 
+    static func nib() -> UINib {
+        return UINib(nibName: ReuseIdentifier, bundle: .main)
+    }
+
     static func registerCell(in tableView: UITableView) {
         tableView.register(self, forCellReuseIdentifier: ReuseIdentifier)
+    }
+
+    static func registerNib(in tableView: UITableView) {
+        tableView.register(nib(), forCellReuseIdentifier: ReuseIdentifier)
     }
 
     static func dequeueReusableCell(from tableView: UITableView, for indexPath: IndexPath) -> Self {
@@ -38,8 +46,16 @@ public extension Reusable where Self: UITableViewHeaderFooterView {
 
 public extension Reusable where Self: UICollectionViewCell {
 
+    static func nib() -> UINib {
+        return UINib(nibName: ReuseIdentifier, bundle: .main)
+    }
+
     static func registerCell(in collectionView: UICollectionView) {
         collectionView.register(self, forCellWithReuseIdentifier: ReuseIdentifier)
+    }
+
+    static func registerNib(in collectionView: UICollectionView) {
+        collectionView.register(nib(), forCellWithReuseIdentifier: ReuseIdentifier)
     }
 
     static func dequeueReusableCell(from collectionView: UICollectionView, for indexPath: IndexPath) -> Self {
