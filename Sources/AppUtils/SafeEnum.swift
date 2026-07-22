@@ -39,3 +39,7 @@ public struct SafeEnum<StringEnum: RawRepresentable>: Decodable where StringEnum
 }
 
 extension SafeEnum: Sendable where StringEnum: Sendable {}
+
+extension SafeEnum: Equatable where StringEnum: Equatable {}
+
+extension SafeEnum: Hashable where StringEnum: Hashable {}

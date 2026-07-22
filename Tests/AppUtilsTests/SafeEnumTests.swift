@@ -63,4 +63,47 @@ final class SafeEnumTests: XCTestCase {
         XCTAssertEqual(decoded.count, 6)
         XCTAssertEqual(decoded.compactMap { $0.value }, [.autoteka, .sravni])
     }
+
+    // MARK: - Equatable / Hashable
+
+    private func decodeOne(_ json: String) throws -> SafeEnum<SourceType> {
+        try JSONDecoder().decode(SafeEnum<SourceType>.self, from: Data(json.utf8))
+    }
+
+    func testEqualForSameKnownValue() throws {
+        let a = try decodeOne("\"autoteka\"")
+        let b = try decodeOne("\"autoteka\"")
+        XCTAssertEqual(a, b)
+    }
+
+    func testNotEqualForDifferentValues() throws {
+        let a = try decodeOne("\"autoteka\"")
+        let b = try decodeOne("\"sravni\"")
+        XCTAssertNotEqual(a, b)
+        let c = try decodeOne("\"unknown_source\"")
+        XCTAssertNotEqual(a, c)
+    }
+
+    func testNilValuesAreEqualRegardlessOfOriginalRawValue() throws {
+        // Both decode to value == nil, so they compare equal even though
+        // the original raw strings differ - the raw value is not stored.
+        let a = try decodeOne("\"unknown_one\"")
+        let b = try decodeOne("\"unknown_two\"")
+        XCTAssertEqual(a, b)
+    }
+
+    func testHashableWorksAsDictionaryKeyAndSetElement() throws {
+        let a = try decodeOne("\"autoteka\"")
+        let b = try decodeOne("\"autoteka\"")
+        let c = try decodeOne("\"sravni\"")
+        XCTAssertEqual(a.hashValue, b.hashValue)
+
+        var finished: [SafeEnum<SourceType>: Bool] = [:]
+        finished[a] = true
+        XCTAssertEqual(finished[b], true)
+        XCTAssertNil(finished[c])
+
+        let set: Set<SafeEnum<SourceType>> = [a, b, c]
+        XCTAssertEqual(set.count, 2)
+    }
 }
