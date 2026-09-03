@@ -151,4 +151,71 @@ public enum Formatters {
         let buildPadded = (String(repeating: "0", count: max(0, 4 - build.count)) + build).prefix(4)
         return "\(versionPadded)\(buildPadded)"
     }
+
+    // MARK: - Dates arriving as strings
+
+    /// `31.01.2026` — day-first, the shape the app's Russian-facing screens show dates in.
+    ///
+    /// POSIX locale on purpose: the pattern is fixed, so it must not follow the device's calendar or
+    /// digits.
+    public static let dayMonthYearFormatter: DateFormatter = {
+        makeFixedFormatter("dd.MM.yyyy")
+    }()
+
+    /// Parses a date written in any of the shapes HTTP sources are known to send: ISO 8601 with or
+    /// without a timezone and with or without fractional seconds, a bare `yyyy-MM-dd`, and the
+    /// already day-first `dd.MM.yyyy`.
+    ///
+    /// `nil` when none of them match — an unrecognised shape is reported as such rather than guessed
+    /// at, so the caller can decide what to show.
+    public static func date(fromLooseString raw: String) -> Date? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        if let date = looseISO8601Formatters.lazy.compactMap({ $0.date(from: trimmed) }).first {
+            return date
+        }
+        return looseDateFormatters.lazy.compactMap { $0.date(from: trimmed) }.first
+    }
+
+    /// `dd.MM.yyyy` when `raw` can be parsed by `date(fromLooseString:)`, and `raw` untouched when it
+    /// cannot.
+    ///
+    /// Idempotent on values that are already day-first, which is what lets it sit on a field fed by
+    /// several sources at once: one may send ISO and another the finished form, and normalising the
+    /// finished one changes nothing.
+    public static func dayMonthYear(fromLooseString raw: String) -> String {
+        guard let date = date(fromLooseString: raw) else { return raw }
+        return dayMonthYearFormatter.string(from: date)
+    }
+
+    /// Two instances on purpose: `.withFractionalSeconds` makes the fraction *required* rather than
+    /// optional, so one formatter cannot accept both `2026-01-31T12:00:00Z` and
+    /// `2026-01-31T12:00:00.000Z`. The stricter one is tried first.
+    private static let looseISO8601Formatters: [ISO8601DateFormatter] = {
+        let optionSets: [ISO8601DateFormatter.Options] = [
+            [.withInternetDateTime, .withFractionalSeconds],
+            [.withInternetDateTime]
+        ]
+        return optionSets.map { options in
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = options
+            return formatter
+        }
+    }()
+
+    /// Ordered widest-first among the timezone-less shapes. `DateFormatter` requires a full match, so
+    /// the order only decides which one answers, never whether a value is accepted.
+    private static let looseDateFormatters: [DateFormatter] = [
+        "yyyy-MM-dd'T'HH:mm:ss.SSS",
+        "yyyy-MM-dd'T'HH:mm:ss",
+        "yyyy-MM-dd",
+        "dd.MM.yyyy"
+    ].map(makeFixedFormatter)
+
+    private static func makeFixedFormatter(_ format: String) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = format
+        return formatter
+    }
 }
