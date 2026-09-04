@@ -38,61 +38,188 @@ public struct ModuleLog {
 
     // MARK: - File Logging
 
-    private static var filePath: String?
-    private static var isFileLoggingEnabled = false
+    /// Where the log is written, and the one place that touches the file.
+    ///
+    /// The writer used to read the whole file, append one line and write the whole file back — and
+    /// atomically, which is a full copy plus a rename. Per line. On the calling thread. The cost of
+    /// a line grew with the size of the file, so the bytes written over a session grew with its
+    /// square: five thousand 200-byte lines make a 1 MB file and about 2.5 GB of writing. Now the
+    /// line is appended through an open handle on a queue of its own.
+    ///
+    /// The two numbers people quoted at each other were both right and about different things — the
+    /// file was megabytes, the writing was gigabytes. Only the second one was the problem.
+    private static let ioQueue = DispatchQueue(label: "com.autoexpert.apputils.modulelog", qos: .utility)
+
+    /// Touched on `ioQueue` only.
+    private static var handle: FileHandle?
+    private static var handlePath: String?
+    private static var bytesInFile = 0
+
+    /// `filePath` and `isFileLoggingEnabled` are read from every thread that logs and written from
+    /// the main thread at launch — and now also from `ioQueue`, when a file fills up and the next
+    /// part takes over. That is a race the old synchronous writer did not have to answer for.
+    private static let stateLock = NSLock()
+    private static var _filePath: String?
+    private static var _isFileLoggingEnabled = false
+
+    private static var filePath: String? {
+        get { stateLock.lock(); defer { stateLock.unlock() }; return _filePath }
+        set { stateLock.lock(); defer { stateLock.unlock() }; _filePath = newValue }
+    }
+
+    private static var isFileLoggingEnabled: Bool {
+        get { stateLock.lock(); defer { stateLock.unlock() }; return _isFileLoggingEnabled }
+        set { stateLock.lock(); defer { stateLock.unlock() }; _isFileLoggingEnabled = newValue }
+    }
+
     private static var logFileDateFormatter: DateFormatter {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd.MM.yyyy"
         return dateFormatter
     }
 
+    /// Where the files live. Overridable so the rotation can be exercised in a directory of its own
+    /// instead of the process-wide temporary one, which tests share with everything else.
+    static var directory: String = NSTemporaryDirectory()
+
     public static func enableFileLogging(appLaunchCount: Int = 0) {
-            let path = logFileUrl(appLaunchCount: appLaunchCount)
+        let base = logFileUrl(appLaunchCount: appLaunchCount)
+        let path = startingPart(for: base)
 
-            // Only initialize file if it doesn't exist
-            if !FileManager.default.fileExists(atPath: path) {
-                try? "".write(toFile: path, atomically: true, encoding: .utf8)
+        if !FileManager.default.fileExists(atPath: path) {
+            try? "".write(toFile: path, atomically: true, encoding: .utf8)
+        }
+
+        filePath = path
+        isFileLoggingEnabled = true
+        ioQueue.async {
+            closeHandle()
+            bytesInFile = fileSize(path)
+            // Cheap and once per launch, which is why it lives here rather than on a timer or on
+            // the write path. Nothing else in the app knows enough to do it.
+            prune(keeping: path)
+        }
+    }
+
+    public static func disableFileLogging() {
+        isFileLoggingEnabled = false
+        filePath = nil
+        ioQueue.async { closeHandle() }
+    }
+
+    public static func logFileUrl(appLaunchCount: Int = 0) -> String {
+        let dateString = logFileDateFormatter.string(from: Date())
+        let suffix = appLaunchCount % 3
+        return directory + "\(dateString)_\(suffix)\(LogFileName.suffix)"
+    }
+
+    public static func allLogFilePaths() -> [String] {
+        let fileManager = FileManager.default
+        let enumerator = fileManager.enumerator(atPath: directory)
+        var paths = [String]()
+        while let element = enumerator?.nextObject() as? String {
+            if element.hasSuffix(LogFileName.suffix) {
+                paths.append(directory + element)
             }
-
-            filePath = path
-            isFileLoggingEnabled = true
         }
+        return paths
+    }
 
-        public static func disableFileLogging() {
-            isFileLoggingEnabled = false
-            filePath = nil
-        }
-
-        public static func logFileUrl(appLaunchCount: Int = 0) -> String {
-            let dateString = logFileDateFormatter.string(from: Date())
-            let suffix = appLaunchCount % 3
-            return NSTemporaryDirectory() + "\(dateString)_\(suffix)_log.txt"
-        }
-
-        public static func allLogFilePaths() -> [String] {
-            let fileManager = FileManager.default
-            let enumerator = fileManager.enumerator(atPath: NSTemporaryDirectory())
-            var paths = [String]()
-            while let element = enumerator?.nextObject() as? String {
-                if element.contains("_log.txt") {
-                    paths.append(NSTemporaryDirectory() + element)
-                }
-            }
-            return paths
-        }
-
-        public static func currentLogContent() -> String? {
-            guard let path = filePath, FileManager.default.fileExists(atPath: path) else {
-                return nil
-            }
+    /// Waits for whatever is queued before reading.
+    ///
+    /// It has to. This is what the support upload and the shake-to-send diagnostic read, and both
+    /// are asked for right after something went wrong — the lines describing it are the ones still
+    /// in flight. An asynchronous writer without this hop would drop exactly them.
+    public static func currentLogContent() -> String? {
+        guard let path = filePath else { return nil }
+        return ioQueue.sync {
+            try? handle?.synchronize()
+            guard FileManager.default.fileExists(atPath: path) else { return nil }
             return try? String(contentsOfFile: path, encoding: .utf8)
         }
+    }
 
-        private static func writeToFile(_ message: String) {
-            guard isFileLoggingEnabled, let path = filePath else { return }
-            let text = try? String(contentsOf: URL(fileURLWithPath: path))
-            try? ((text ?? "") + "\n" + "\(printPrefix) " + message).write(toFile: path, atomically: true, encoding: .utf8)
+    private static func writeToFile(_ message: String) {
+        guard isFileLoggingEnabled else { return }
+        // Built here, not on the writer queue: the prefix carries the id of the thread that
+        // produced the line and the moment it was produced, and both would name the queue instead.
+        let line = "\n\(printPrefix) " + message
+        ioQueue.async { append(line) }
+    }
+
+    // MARK: - File Logging — on ioQueue only
+
+    /// Reads the destination when it writes, not when it was asked to.
+    ///
+    /// The first version captured the path at the call site and a test caught what that costs:
+    /// a burst of logging enqueues a thousand blocks in a moment, every one of them holding the
+    /// path from before the file filled up, so the rollover happened over and over and every line
+    /// still went into the file it was supposed to have left.
+    private static func append(_ line: String) {
+        guard let path = filePath,
+              let data = line.data(using: .utf8),
+              let handle = openHandle(for: path) else { return }
+        // `write(contentsOf:)` reports a full disk instead of raising an Objective-C exception
+        // through Swift, where it cannot be caught. The package still supports iOS 13.0.
+        if #available(iOS 13.4, macOS 10.15.4, *) {
+            try? handle.write(contentsOf: data)
+        } else {
+            handle.write(data)
         }
+        bytesInFile += data.count
+
+        guard LogRotationPolicy.isFull(bytesInFile) else { return }
+        closeHandle()
+        let next = LogFileName.nextPart(after: path)
+        filePath = next
+        bytesInFile = 0
+    }
+
+    private static func openHandle(for path: String) -> FileHandle? {
+        if let handle, handlePath == path { return handle }
+        closeHandle()
+        if !FileManager.default.fileExists(atPath: path) {
+            FileManager.default.createFile(atPath: path, contents: nil)
+        }
+        guard let opened = FileHandle(forWritingAtPath: path) else { return nil }
+        opened.seekToEndOfFile()
+        handle = opened
+        handlePath = path
+        return opened
+    }
+
+    private static func closeHandle() {
+        try? handle?.close()
+        handle = nil
+        handlePath = nil
+    }
+
+    private static func fileSize(_ path: String) -> Int {
+        ((try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? Int) ?? 0
+    }
+
+    /// The part to carry on writing: the last one that exists, or the next one when it is full.
+    ///
+    /// A relaunch inside the same day and launch-suffix continues the file it left rather than
+    /// picking up a full one and immediately rolling it.
+    private static func startingPart(for base: String) -> String {
+        let existing = LogFileName.parts(of: base, among: allLogFilePaths())
+        guard let last = existing.last else { return base }
+        return LogRotationPolicy.isFull(fileSize(last)) ? LogFileName.nextPart(after: last) : last
+    }
+
+    private static func prune(keeping current: String) {
+        let manager = FileManager.default
+        let files = allLogFilePaths().map { path -> LogRotationPolicy.File in
+            let attributes = try? manager.attributesOfItem(atPath: path)
+            return LogRotationPolicy.File(path: path,
+                                          modified: (attributes?[.modificationDate] as? Date) ?? .distantPast,
+                                          size: (attributes?[.size] as? Int) ?? 0)
+        }
+        for path in LogRotationPolicy.filesToDelete(files, now: Date(), keeping: current) {
+            try? manager.removeItem(atPath: path)
+        }
+    }
 
         // MARK: - Static
 
