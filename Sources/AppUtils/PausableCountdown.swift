@@ -52,6 +52,18 @@ public struct PausableCountdown {
 
     public var isPaused: Bool { pausedAt != nil }
 
+    /// How much more pausing the ceiling still allows.
+    ///
+    /// Public because a caller that schedules a timer needs it. While paused, this type keeps
+    /// answering `remaining(at:)` correctly — the budget starts running again by itself once the
+    /// ceiling is passed — but nothing WAKES the caller at that moment. A caller that pauses and
+    /// simply cancels its timer never finds out, and an interruption nobody closes holds the
+    /// operation open forever, which is the exact failure the ceiling exists to prevent.
+    ///
+    /// So the timer to arm while paused is `remaining(at: now) + remainingPause`: the latest instant
+    /// at which the budget could still be alive.
+    public var remainingPause: TimeInterval { pauseBudgetLeft }
+
     /// Pausing an already-paused countdown is a no-op rather than an error: the events that trigger
     /// a pause often fire more than once for one occurrence — a page committing navigation twice,
     /// a sheet re-presenting — and counting the second one would move the pause start forward and
