@@ -122,3 +122,46 @@ final class PausableCountdownTests: XCTestCase {
         XCTAssertEqual(c.remaining(at: 100), 230, "only 30s of the 100 was excused")
     }
 }
+
+// MARK: - What a caller needs to schedule against
+
+extension PausableCountdownTests {
+
+    /// A caller cancels its timer when it pauses. Nothing then wakes it at the moment the ceiling
+    /// runs out — the budget resumes on paper while the operation hangs in practice. `remainingPause`
+    /// is what lets the caller arm a timer for that instant instead.
+    func testRemainingPauseStartsAtTheCeiling() {
+        XCTAssertEqual(countdown().remainingPause, 120)
+        XCTAssertEqual(countdown(300, maxPause: 30).remainingPause, 30)
+    }
+
+    func testRemainingPauseShrinksByWhatWasAlreadySpent() {
+        var c = countdown()
+        c.pause(at: 0)
+        c.resume(at: 50)
+
+        XCTAssertEqual(c.remainingPause, 70)
+    }
+
+    func testRemainingPauseReachesZeroAtTheCeiling() {
+        var c = countdown()
+        c.pause(at: 0)
+        c.resume(at: 500)
+
+        XCTAssertEqual(c.remainingPause, 0)
+    }
+
+    /// The sum a caller arms its timer with, and the reason it is a DELAY rather than an instant:
+    /// everything left of the budget plus everything left of the pause allowance is how long from
+    /// now the operation could still be alive, even if the interruption is never closed.
+    func testBudgetPlusRemainingPauseIsHowLongTheOperationCanStillLive() {
+        var c = countdown()
+        c.pause(at: 20)
+
+        let delay = c.remaining(at: 20) + c.remainingPause
+        XCTAssertEqual(delay, 220, "100s of budget left, plus the full 120s of pause allowance")
+
+        XCTAssertGreaterThan(c.remaining(at: 20 + delay - 1), 0, "a second early it is still alive")
+        XCTAssertEqual(c.remaining(at: 20 + delay), 0, "and at that instant it is spent")
+    }
+}
